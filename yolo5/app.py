@@ -1,59 +1,81 @@
 import time
-from pathlib import Path
-from flask import Flask, request
-from detect import run
 import uuid
 import yaml
+import boto3
+from pathlib import Path
+from flask import Flask, request, jsonify
+from detect import run
 from loguru import logger
 import os
+from pymongo import MongoClient
 
+# Set up Boto3 client
+s3_client = boto3.client('s3')
+
+# MongoDB connection
+mongo_client = MongoClient('mongodb://mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=myReplicaSet')
+db = mongo_client['prediction_database']
+predictions_collection = db['predictions']
+
+app = Flask(__name__)
 images_bucket = os.environ['BUCKET_NAME']
 
 with open("data/coco128.yaml", "r") as stream:
     names = yaml.safe_load(stream)['names']
 
-app = Flask(__name__)
+if not os.path.exists('temp/photos/'):
+    os.makedirs('temp/photos/')
+
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    # Generates a UUID for this current prediction HTTP request. This id can be used as a reference in logs to identify and track individual prediction requests.
     prediction_id = str(uuid.uuid4())
-
     logger.info(f'prediction: {prediction_id}. start processing')
 
-    # Receives a URL parameter representing the image to download from S3
     img_name = request.args.get('imgName')
 
-    # TODO download img_name from S3, store the local image path in the original_img_path variable.
-    #  The bucket name is provided as an env var BUCKET_NAME.
-    original_img_path = ...
+    # Extract the file name from the full path
+    file_name = os.path.basename(img_name)
+    original_img_path = f'temp/photos/{file_name}'
+
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(original_img_path), exist_ok=True)
+
+    # Download image from S3
+    try:
+        s3_client.download_file(images_bucket, img_name, original_img_path)
+    except Exception as e:
+        logger.error(f'Error downloading the image from S3: {e}')
+        return f'Error: {e}', 500
 
     logger.info(f'prediction: {prediction_id}/{original_img_path}. Download img completed')
 
-    # Predicts the objects in the image
-    run(
-        weights='yolov5s.pt',
-        data='data/coco128.yaml',
-        source=original_img_path,
-        project='static/data',
-        name=prediction_id,
-        save_txt=True
-    )
-
+    # Predict objects in the image
+    run(weights='yolov5s.pt', data='data/coco128.yaml', source=original_img_path, project='static/data',
+        name=prediction_id, save_txt=True)
     logger.info(f'prediction: {prediction_id}/{original_img_path}. done')
 
-    # This is the path for the predicted image with labels
-    # The predicted image typically includes bounding boxes drawn around the detected objects, along with class labels and possibly confidence scores.
-    predicted_img_path = Path(f'static/data/{prediction_id}/{original_img_path}')
+    # Path for the predicted image with labels
+    predicted_img_dir = Path(f'static/data/{prediction_id}')
+    predicted_img_path = predicted_img_dir / file_name
 
-    # TODO Uploads the predicted image (predicted_img_path) to S3 (be careful not to override the original image).
+    # Ensure the predicted image path is correct
+    if not predicted_img_path.exists():
+        logger.error(f'Predicted image does not exist: {predicted_img_path}')
+        return f'Error: Predicted image does not exist', 500
+
+    # Upload predicted image to S3
+    try:
+        s3_client.upload_file(str(predicted_img_path), images_bucket, f'predictions/{file_name}')
+    except Exception as e:
+        logger.error(f'Error uploading the predicted image to S3: {e}')
+        return f'Error: {e}', 500
 
     # Parse prediction labels and create a summary
-    pred_summary_path = Path(f'static/data/{prediction_id}/labels/{original_img_path.split(".")[0]}.txt')
+    pred_summary_path = predicted_img_dir / f'labels/{file_name.split(".")[0]}.txt'
     if pred_summary_path.exists():
         with open(pred_summary_path) as f:
-            labels = f.read().splitlines()
-            labels = [line.split(' ') for line in labels]
+            labels = [line.split(' ') for line in f.read().splitlines()]
             labels = [{
                 'class': names[int(l[0])],
                 'cx': float(l[1]),
@@ -67,14 +89,19 @@ def predict():
         prediction_summary = {
             'prediction_id': prediction_id,
             'original_img_path': original_img_path,
-            'predicted_img_path': predicted_img_path,
+            'predicted_img_path': predicted_img_path.as_posix(),
             'labels': labels,
             'time': time.time()
         }
 
-        # TODO store the prediction_summary in MongoDB
+        # Store prediction summary in MongoDB
+        result = predictions_collection.insert_one(prediction_summary)
 
-        return prediction_summary
+        # Retrieve the inserted document and convert _id to string
+        inserted_document = predictions_collection.find_one({'_id': result.inserted_id})
+        inserted_document['_id'] = str(inserted_document['_id'])
+
+        return jsonify(inserted_document)
     else:
         return f'prediction: {prediction_id}/{original_img_path}. prediction result not found', 404
 
