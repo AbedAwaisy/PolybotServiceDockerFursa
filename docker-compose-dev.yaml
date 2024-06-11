@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  mongo1:
+    image: mongo:5
+    container_name: dev-mongo1
+    command: mongod --replSet myReplicaSet --bind_ip_all
+    ports:
+      - "27017:27017"
+    volumes:
+      - dev-mongo1-data:/data/db
+    networks:
+      - dev-mongoCluster
+
+  mongo2:
+    image: mongo:5
+    container_name: dev-mongo2
+    command: mongod --replSet myReplicaSet --bind_ip_all
+    ports:
+      - "27018:27017"
+    volumes:
+      - dev-mongo2-data:/data/db
+    networks:
+      - dev-mongoCluster
+
+  mongo3:
+    image: mongo:5
+    container_name: dev-mongo3
+    command: mongod --replSet myReplicaSet --bind_ip_all
+    ports:
+      - "27019:27017"
+    volumes:
+      - dev-mongo3-data:/data/db
+    networks:
+      - dev-mongoCluster
+
+  mongo-init:
+    image: ${INIT_REPLICA_IMG_NAME}
+    container_name: dev-mongo-init
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+    entrypoint: ["/wait-for-mongo.sh", "mongo1:27017", "/init-replica.sh"]
+    networks:
+      - dev-mongoCluster
+
+  yolo5:
+    image: ${YOLO5_IMG_NAME}
+    container_name: dev-yolo5
+    environment:
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+    ports:
+      - "8081:8081"
+    networks:
+      - dev-mongoCluster
+
+  polybot:
+    image: ${POLYBOT_IMG_NAME}
+    container_name: dev-polybot
+    environment:
+      - TELEGRAM_APP_URL=${TELEGRAM_APP_URL}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      - YOLO5_URL=${YOLO5_URL}
+    volumes:
+      - /home/ubuntu/certs:/home/ubuntu
+    ports:
+      - "8443:8443"
+    networks:
+      - dev-mongoCluster
+    secrets:
+      - telegram_dev_token
+
+networks:
+  dev-mongoCluster:
+    driver: bridge
+
+volumes:
+  dev-mongo1-data:
+    driver: local
+  dev-mongo2-data:
+    driver: local
+  dev-mongo3-data:
+    driver: local
+
+secrets:
+  telegram_dev_token:
+    file: ./telegram_dev_token.secret

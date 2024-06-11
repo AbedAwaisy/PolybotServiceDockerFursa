@@ -174,7 +174,7 @@ TELEGRAM_APP_URL=https://dev-bot.mydomain.click
 And here's how you use it in the compose file:
 
 ```yaml
-# docker-compose.yaml
+# docker-compose-dev.yaml
 
 services:
   polybot:

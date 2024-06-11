@@ -18,7 +18,7 @@ db = mongo_client['prediction_database']
 predictions_collection = db['predictions']
 
 app = Flask(__name__)
-images_bucket = os.environ['BUCKET_NAME']
+images_bucket = os.environ['S3_BUCKET_NAME']
 
 with open("data/coco128.yaml", "r") as stream:
     names = yaml.safe_load(stream)['names']

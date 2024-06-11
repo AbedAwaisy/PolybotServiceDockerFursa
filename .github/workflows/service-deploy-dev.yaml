@@ -6,7 +6,7 @@ on:
       - dev
 
 env:
-  BOT_INSTANCE_DOMAIN: dev-bot.abedawaisy.click
+  BOT_INSTANCE_DOMAIN: https://dev-bot.abedawaisy.click:8443
 
 jobs:
   PolybotBuild:
@@ -41,12 +41,29 @@ jobs:
           docker build -t $IMAGE_NAME .
           docker push $IMAGE_NAME
 
+  ReplicaBuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repo code
+        uses: actions/checkout@v2
+
+      - name: Build and push image
+        run: |
+          cd init-replica
+   
+          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
+
+          IMAGE_NAME=replica:${{ github.run_number }}
+          docker build -t $IMAGE_NAME .
+          docker push $IMAGE_NAME
+
   Deploy:
     name: Deploy Docker compose project
     runs-on: ubuntu-latest
     needs:
       - PolybotBuild
       - Yolo5Build
+      - ReplicaBuild
 
     steps:
       - name: Checkout the repo code
@@ -58,8 +75,8 @@ jobs:
           host: ${{ env.BOT_INSTANCE_DOMAIN }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          source: docker-compose.yaml
-          target: PolybotService/
+          source: docker-compose-dev.yaml
+          target: compose-yolo-polybot/dev/
 
       - name: Update the Docker Compose project in the EC2
         uses: appleboy/ssh-action@master
@@ -70,20 +87,23 @@ jobs:
           script: |
             # You deployment script here...
             
-            cd PolybotService/
+            cd compose-yolo-polybot/dev/
             
             # Save telegram bot token in a secret file, to be used in docker-compose.yaml
-            echo -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" > telegram_bot_token.secret
+            echo -n "${{ secrets.TELEGRAM_BOT_TOKEN_DEV }}" > telegram_bot_token.secret
             
             # Generate .env file
             echo """
             POLYBOT_IMG_NAME=polybot:${{ github.run_number }}
             YOLO5_IMG_NAME=yolo5:${{ github.run_number }}
+            INIT_REPLICA_IMG_NAME=replica:${{ github.run_number }}
             TELEGRAM_APP_URL=$BOT_INSTANCE_DOMAIN
+            YOLO5_URL=http://yolo5:8081
+            S3_BUCKET_NAME=abed-prediction-bucket
             """ > .env
             
             # Take the service down
-            docker compose down
+            docker compose -f docker-compose-dev.yaml down
             
             # Take it up with the current updated values
-            docker compose up -d
+            docker compose -f docker-compose-dev.yaml up -d
