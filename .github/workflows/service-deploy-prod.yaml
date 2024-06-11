@@ -1,9 +1,9 @@
-name: Polybot Service Deployment Dev
+name: Polybot Service Deployment Prod
 
 on:
   push:
     branches:
-      - dev
+      - main
 
 env:
   BOT_INSTANCE_DOMAIN: https://prod-bot.abedawaisy.click:8443
