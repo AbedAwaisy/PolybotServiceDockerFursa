@@ -110,3 +110,4 @@ jobs:
             
             # Take it up with the current updated values
             docker compose -f docker-compose-dev.yaml up -d
+            
