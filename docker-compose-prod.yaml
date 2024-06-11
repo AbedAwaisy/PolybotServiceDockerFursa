@@ -69,7 +69,7 @@ services:
     networks:
       - prod-mongoCluster
     secrets:
-      - telegram_prod_token
+      - telegram_bot_token
 
 networks:
   prod-mongoCluster:
@@ -85,4 +85,4 @@ volumes:
 
 secrets:
   telegram_dev_token:
-    file: ./telegram_prod_token.secret
+    file: ./telegram_bot_token.secret
