@@ -96,14 +96,14 @@ jobs:
             echo -n "${{ secrets.TELEGRAM_BOT_TOKEN_DEV }}" > telegram_bot_token.secret
             
             # Generate .env file
-            echo """
-            POLYBOT_IMG_NAME=polybot:${{ github.run_number }}
-            YOLO5_IMG_NAME=yolo5:${{ github.run_number }}
-            INIT_REPLICA_IMG_NAME=replica:${{ github.run_number }}
+            cat <<EOF > .env
+            POLYBOT_IMG_NAME=${{ secrets.DOCKERHUB_REPO }}/polybot:${{ github.run_number }}
+            YOLO5_IMG_NAME=${{ secrets.DOCKERHUB_REPO }}/yolo5:${{ github.run_number }}
+            INIT_REPLICA_IMG_NAME=${{ secrets.DOCKERHUB_REPO }}/replica:${{ github.run_number }}
             TELEGRAM_APP_URL=https://${{ env.BOT_INSTANCE_DOMAIN }}:8443
             YOLO5_URL=http://yolo5:8081
             S3_BUCKET_NAME=abed-prediction-bucket
-            """ > .env
+            EOF
             
             # Take the service down
             docker compose -f docker-compose-dev.yaml down
