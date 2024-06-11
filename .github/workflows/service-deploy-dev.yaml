@@ -6,7 +6,7 @@ on:
       - dev
 
 env:
-  BOT_INSTANCE_DOMAIN: https://dev-bot.abedawaisy.click:8443
+  BOT_INSTANCE_DOMAIN: dev-bot.abedawaisy.click
 
 jobs:
   PolybotBuild:
@@ -15,13 +15,14 @@ jobs:
       - name: Checkout the repo code
         uses: actions/checkout@v2
 
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
       - name: Build and push image
         run: |
           cd polybot
 
-          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
-
-          IMAGE_NAME=polybot:${{ github.run_number }}
+          IMAGE_NAME=${{ secrets.DOCKERHUB_REPO }}/polybot:${{ github.run_number }}
           docker build -t $IMAGE_NAME .
           docker push $IMAGE_NAME
 
@@ -31,13 +32,14 @@ jobs:
       - name: Checkout the repo code
         uses: actions/checkout@v2
 
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
       - name: Build and push image
         run: |
           cd yolo5
    
-          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
-
-          IMAGE_NAME=yolo5:${{ github.run_number }}
+          IMAGE_NAME=${{ secrets.DOCKERHUB_REPO }}/yolo5:${{ github.run_number }}
           docker build -t $IMAGE_NAME .
           docker push $IMAGE_NAME
 
@@ -47,13 +49,14 @@ jobs:
       - name: Checkout the repo code
         uses: actions/checkout@v2
 
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
       - name: Build and push image
         run: |
           cd init-replica
    
-          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
-
-          IMAGE_NAME=replica:${{ github.run_number }}
+          IMAGE_NAME=${{ secrets.DOCKERHUB_REPO }}/replica:${{ github.run_number }}
           docker build -t $IMAGE_NAME .
           docker push $IMAGE_NAME
 
@@ -97,7 +100,7 @@ jobs:
             POLYBOT_IMG_NAME=polybot:${{ github.run_number }}
             YOLO5_IMG_NAME=yolo5:${{ github.run_number }}
             INIT_REPLICA_IMG_NAME=replica:${{ github.run_number }}
-            TELEGRAM_APP_URL=$BOT_INSTANCE_DOMAIN
+            TELEGRAM_APP_URL=https://${{ env.BOT_INSTANCE_DOMAIN }}:8443
             YOLO5_URL=http://yolo5:8081
             S3_BUCKET_NAME=abed-prediction-bucket
             """ > .env

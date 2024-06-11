@@ -69,7 +69,7 @@ services:
     networks:
       - dev-mongoCluster
     secrets:
-      - telegram_dev_token
+      - telegram_bot_token
 
 networks:
   dev-mongoCluster:
@@ -84,5 +84,5 @@ volumes:
     driver: local
 
 secrets:
-  telegram_dev_token:
-    file: ./telegram_dev_token.secret
+  telegram_bot_token:
+    file: ./telegram_bot_token.secret
