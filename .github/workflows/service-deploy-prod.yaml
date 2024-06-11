@@ -15,13 +15,14 @@ jobs:
       - name: Checkout the repo code
         uses: actions/checkout@v2
 
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
       - name: Build and push image
         run: |
           cd polybot
 
-          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
-
-          IMAGE_NAME=polybot:${{ github.run_number }}
+          IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/polybot:${{ github.run_number }}
           docker build -t $IMAGE_NAME .
           docker push $IMAGE_NAME
 
@@ -31,13 +32,14 @@ jobs:
       - name: Checkout the repo code
         uses: actions/checkout@v2
 
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
       - name: Build and push image
         run: |
           cd yolo5
    
-          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
-
-          IMAGE_NAME=yolo5:${{ github.run_number }}
+          IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/yolo5:${{ github.run_number }}
           docker build -t $IMAGE_NAME .
           docker push $IMAGE_NAME
 
@@ -47,13 +49,14 @@ jobs:
       - name: Checkout the repo code
         uses: actions/checkout@v2
 
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
       - name: Build and push image
         run: |
           cd init-replica
    
-          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
-
-          IMAGE_NAME=replica:${{ github.run_number }}
+          IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/replica:${{ github.run_number }}
           docker build -t $IMAGE_NAME .
           docker push $IMAGE_NAME
 
@@ -85,22 +88,20 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           script: |
-            # You deployment script here...
-            
             cd compose-yolo-polybot/prod/
             
             # Save telegram bot token in a secret file, to be used in docker-compose.yaml
             echo -n "${{ secrets.TELEGRAM_BOT_TOKEN_PROD }}" > telegram_bot_token.secret
             
             # Generate .env file
-            echo """
-            POLYBOT_IMG_NAME=polybot:${{ github.run_number }}
-            YOLO5_IMG_NAME=yolo5:${{ github.run_number }}
-            INIT_REPLICA_IMG_NAME=replica:${{ github.run_number }}
+            cat <<EOF > .env
+            POLYBOT_IMG_NAME=${{ secrets.DOCKERHUB_USERNAME }}/polybot:${{ github.run_number }}
+            YOLO5_IMG_NAME=${{ secrets.DOCKERHUB_USERNAME }}/yolo5:${{ github.run_number }}
+            INIT_REPLICA_IMG_NAME=${{ secrets.DOCKERHUB_USERNAME }}/replica:${{ github.run_number }}
             TELEGRAM_APP_URL=$BOT_INSTANCE_DOMAIN
             YOLO5_URL=http://yolo5:8081
             S3_BUCKET_NAME=abed-prediction-bucket
-            """ > .env
+            EOF
             
             # Take the service down
             docker compose -f docker-compose-prod.yaml down
