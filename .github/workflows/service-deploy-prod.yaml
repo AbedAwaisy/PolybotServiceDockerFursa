@@ -26,6 +26,7 @@ jobs:
           docker build -t $IMAGE_NAME .
           docker push $IMAGE_NAME
 
+
   Yolo5Build:
     runs-on: ubuntu-latest
     steps:
