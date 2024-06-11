@@ -84,5 +84,5 @@ volumes:
     driver: local
 
 secrets:
-  telegram_dev_token:
+  telegram_bot_token:
     file: ./telegram_bot_token.secret
