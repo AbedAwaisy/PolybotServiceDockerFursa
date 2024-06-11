@@ -6,7 +6,7 @@ from bot import ObjectDetectionBot
 app = flask.Flask(__name__)
 
 # Read the TELEGRAM_TOKEN from the Docker secret file
-with open('/run/secrets/telegram_dev_token', 'r') as file:
+with open('/run/secrets/telegram_bot_token', 'r') as file:
     TELEGRAM_TOKEN = file.read().strip()
 TELEGRAM_APP_URL = os.environ['TELEGRAM_APP_URL']
 S3_BUCKET_NAME = os.environ['S3_BUCKET_NAME']
