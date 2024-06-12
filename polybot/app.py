@@ -14,7 +14,7 @@ YOLO5_URL = os.environ['YOLO5_URL']
 
 @app.route('/', methods=['GET'])
 def index():
-    return 'Ok'
+    return 'Ok!'
 
 
 @app.route(f'/{TELEGRAM_TOKEN}/', methods=['POST'])
